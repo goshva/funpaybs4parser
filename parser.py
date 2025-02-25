@@ -65,8 +65,9 @@ for game_id, game_url in games:
         # Get existing columns in the games table
         existing_columns = get_existing_columns()
 
-        # Add new columns if needed
+        category = category.replace('-','_')
         for category in game_details.keys():
+            
             if category not in existing_columns:
                 print(f"Adding new column: {category}")
                 cursor.execute(f"ALTER TABLE games ADD COLUMN {category} INTEGER DEFAULT 0")
