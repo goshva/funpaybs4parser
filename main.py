@@ -1,10 +1,14 @@
 from db_manager import DatabaseManager
 from scraper import GameScraper
-import time
+from init import games_data
+
 def main():
     # Initialize components
     db = DatabaseManager()
     scraper = GameScraper()
+    db.insert_games(games_data) #inserting data from html parser
+    db.create_lots_table()
+    db.insert_lots(games_data)
 
     # Get all games
     games = db.get_all_games()
@@ -12,10 +16,10 @@ def main():
     # Process each game
     for game_id, game_url in games:
         print(f"Fetching data for {game_url}...")
-        
+
         # Scrape game details
         game_details = scraper.scrape_game_data(game_url)
-        
+
         if game_details:
             # Update database structure if needed
             existing_columns = db.get_existing_columns()
@@ -27,6 +31,8 @@ def main():
             # Update game data
             db.update_game(game_id, game_details)
             print(f"Updated game_id {game_id} with new values.")
+
+
     # Cleanup
     db.close()
     print("Database update complete.")

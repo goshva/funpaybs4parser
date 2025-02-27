@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connect to the SQLite database
-conn = sqlite3.connect('games.db')
+conn = sqlite3.connect('funpay.db')
 cursor = conn.cursor()
 
 # Query the games and their related lots
