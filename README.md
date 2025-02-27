@@ -3,4 +3,4 @@ python3 -m venv venv
 source venv/Script/activate  
 pip install -r requirements.txt  
 python init.py  
-python parser.py  
+python main.py  
