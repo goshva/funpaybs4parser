@@ -43,7 +43,7 @@ def scrape_game_data(game_url):
                 value_div = a_tag.find("div", class_="counter-value")
 
                 if param_div and value_div:
-                    category = param_div.text.strip().replace(" ", "_")  # Convert to column-safe format
+                    category = param_div.text.strip().replace(" ", "_").replace("-","_").replace("(","").replace(")","")
                     value = int(value_div.text.strip())
 
                     game_data[category] = value
@@ -66,7 +66,6 @@ for game_id, game_url in games:
         existing_columns = get_existing_columns()
 
         for category in game_details.keys():
-            category = category.replace('-','_')
             if category not in existing_columns:
                 print(f"Adding new column: {category}")
                 cursor.execute(f"ALTER TABLE games ADD COLUMN {category} INTEGER DEFAULT 0")
