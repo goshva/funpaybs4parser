@@ -1,3 +1,5 @@
 venv
 .env
 funpay.db
+__pycache__/
+*.py[cod]
