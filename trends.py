@@ -57,32 +57,22 @@ def load_games_data(db_path='funpay.db'):
 
     return pd.concat(all_data, ignore_index=True)
 
-def get_top_32_games(df, metric_column):
+def calculate_changes(df, metric_column):
     """
-    Get top 32 games by latest absolute values and biggest changes.
+    Calculate the changes in metric values over time for each game.
     """
-    latest_timestamp = df['timestamp'].max()
-    latest_values = df[df['timestamp'] == latest_timestamp][['game_title', metric_column]].dropna()
-
-    if latest_values.empty:
-        return None, None
-
-    top_32_absolute = latest_values.nlargest(20, metric_column)
-
     pivot_df = df.pivot_table(index='timestamp', columns='game_title', values=metric_column, aggfunc='mean')
 
     if pivot_df.shape[0] < 2:  # Ensure at least two timestamps exist for change calculation
-        return top_32_absolute, None
+        return None
 
-    # Calculate percentage change
-    initial_values = pivot_df.iloc[0]
-    final_values = pivot_df.iloc[-1]
-    percentage_change = ((final_values - initial_values) / initial_values) * 100
-    top_32_changes = percentage_change.abs().nlargest(32).dropna()
+    # Calculate the absolute change between consecutive timestamps
+    changes = pivot_df.diff().abs()
+    total_changes = changes.sum()
 
-    return top_32_absolute, pd.DataFrame(top_32_changes)
+    return total_changes
 
-def plot_time_series_for_games(df, games_list, metric_column, title, y_label, plot_type='absolute', output_dir=None):
+def plot_significant_changes(df, games_list, metric_column, title, y_label, output_dir=None):
     """
     Plot time series data for specific games only if valid data exists.
     """
@@ -108,7 +98,6 @@ def plot_time_series_for_games(df, games_list, metric_column, title, y_label, pl
     plt.ylabel(y_label)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Games")
     plt.grid(True, alpha=0.3)
-    plt.axhline(y=0, color='black', linestyle='-', alpha=0.2) if plot_type == 'change' else None
     plt.tight_layout()
 
     if output_dir:
@@ -132,42 +121,35 @@ def main():
         for metric in metrics:
             print(f"Analyzing {metric}...")
 
-            top_32_absolute, top_32_changes = get_top_32_games(df, metric)
-            if top_32_absolute is None:
+            changes = calculate_changes(df, metric)
+            if changes is None:
                 continue  # Skip metric if no valid data exists
 
-            # Generate plots
-            plot_time_series_for_games(df, top_32_absolute['game_title'].tolist(), metric,
-                                       f"Top 32 Games by {metric} (Absolute Values)", metric, 'absolute', output_dir)
-            if top_32_changes is not None:
-                plot_time_series_for_games(df, top_32_changes.index.tolist(), metric,
-                                           f"Top 32 Games by {metric} (Rate of Change)", f"{metric} Change (%)",
-                                           'change', output_dir)
+            # Get top 32 games with the most significant changes
+            top_32_changes = changes.nlargest(32).dropna()
+
+            # Generate a single plot for the metric
+            plot_significant_changes(df, top_32_changes.index.tolist(), metric,
+                                     f"Significant Changes in {metric} Over Time", f"{metric} Change", output_dir)
 
             # Save summary report
-            report_path = output_dir / f"{metric}_analysis_report.txt"
+            report_path = output_dir / f"{metric}_significant_changes_report.txt"
             with open(report_path, 'w') as f:
-                f.write(f"Analysis Report for {metric}\n")
+                f.write(f"Significant Changes Report for {metric}\n")
                 f.write(f"Generated at: {timestamp_str} UTC\n")
                 f.write("="*50 + "\n\n")
 
-                f.write("Top 32 Games by Absolute Values:\n")
+                f.write("Top 32 Games by Most Significant Changes:\n")
                 f.write("-"*30 + "\n")
-                f.write(top_32_absolute.to_string())
+                f.write(top_32_changes.to_string())
                 f.write("\n\n")
-
-                if top_32_changes is not None:
-                    f.write("Top 32 Games by Total Change:\n")
-                    f.write("-"*30 + "\n")
-                    f.write(top_32_changes.to_string())
-                    f.write("\n\n")
 
                 f.write("Basic Statistics:\n")
                 f.write("-"*30 + "\n")
                 stats = df.groupby('game_title')[metric].agg(['mean', 'min', 'max', 'std']).dropna()
                 f.write(stats.to_string())
 
-        print(f"Analysis complete! Reports saved in {output_dir}")
+        print(f"Significant changes analysis complete! Reports saved in {output_dir}")
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
