@@ -1,6 +1,5 @@
 import time
 import schedule
-import os
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -60,13 +59,16 @@ def main():
     # Initialize components
     db = DatabaseManager()
     scraper = GameScraper()
-    games_data = get_games_data() #getting data
-    db.insert_games(games_data)  # inserting data from html parser
+
+    games_data = get_games_data()
+
+    db.insert_games(games_data)
     db.create_lots_table()
     db.insert_lots(games_data)
 
-    # Get all games
+    # Get all games from the database
     games = db.get_all_games()
+    print(f"Processing {len(games)} games...")
 
     # Process each game
     for game_id, game_url in games:

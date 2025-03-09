@@ -11,7 +11,7 @@ class DatabaseManager:
         self._setup_database()
 
     def _setup_database(self):
-        """Initialize the database structure with timestamped games table and parser_runs table."""
+        """Initialize the database structure with timestamped games table, parser_runs table, and orders table."""
 
         # Create a table to store parser run details
         self.cursor.execute('''
@@ -29,8 +29,21 @@ class DatabaseManager:
                 game_title TEXT NOT NULL
             )
         ''')
-        
-        #inserting time into parser_runs
+
+        # Create the orders table
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS orders (
+                order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                description TEXT,
+                price REAL,
+                link TEXT,
+                timestamp TEXT
+            )
+        ''')
+
+        # Inserting time into parser_runs
         try:
             self.cursor.execute(f"INSERT INTO parser_runs (timestamp) VALUES (?)", (self.timestamp,))
             self.conn.commit()
@@ -39,6 +52,14 @@ class DatabaseManager:
             self.timestamp = self.get_last_timestamp()
             self.games_table_name = f"games_{self.timestamp}"
 
+    def save_order(self, user_id, user_name, description, price, link):
+        """Save order details into the orders table."""
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.cursor.execute('''
+            INSERT INTO orders (user_id, user_name, description, price, link, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (user_id, user_name, description, price, link, timestamp))
+        self.conn.commit()
 
     def get_all_games(self):
         """Fetch all game URLs from the current timestamped games table"""
@@ -51,7 +72,6 @@ class DatabaseManager:
         return {row[1] for row in self.cursor.fetchall()}
 
     def add_column(self, column_name):
-        
         column_name_clear = re.sub(r'[^a-zA-Z0-9_]', '', column_name)
         self.cursor.execute(f"ALTER TABLE {self.games_table_name} ADD COLUMN {column_name_clear} INTEGER DEFAULT 0")
         self.conn.commit()
@@ -63,15 +83,15 @@ class DatabaseManager:
         query = f"UPDATE {self.games_table_name} SET {columns} WHERE game_id = ?"
         self.cursor.execute(query, values)
         self.conn.commit()
-    
+
     def get_parser_runs(self):
         """Fetch all recorded parser runs."""
         self.cursor.execute("SELECT run_id, timestamp FROM parser_runs ORDER BY timestamp DESC")
         return self.cursor.fetchall()
-    
+
     def get_games_table_name(self):
         return self.games_table_name
-    
+
     def get_last_timestamp(self):
         self.cursor.execute("SELECT timestamp FROM parser_runs ORDER BY timestamp DESC LIMIT 1")
         result = self.cursor.fetchone()
@@ -79,12 +99,12 @@ class DatabaseManager:
             return result[0]
         else:
             return None
-        
+
     def close(self):
         """Close the database connection"""
         self.conn.close()
 
-    def insert_games(self,games_data):
+    def insert_games(self, games_data):
         for game_id, game_url, game_title, _ in games_data:
             self.cursor.execute(f'INSERT OR IGNORE INTO {self.games_table_name} (game_id, game_url, game_title) VALUES (?, ?, ?)', (game_id, game_url, game_title))
         self.conn.commit()
@@ -107,4 +127,3 @@ class DatabaseManager:
             for lot_name, lot_url in lots:
                 self.cursor.execute('INSERT INTO lots (lot_name, lot_url, game_id, table_name) VALUES (?, ?, ?, ?)', (lot_name, lot_url, game_id, self.games_table_name))
         self.conn.commit()
-

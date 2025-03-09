@@ -31,6 +31,30 @@ class GameScraper:
                         value = int(value_div.text.strip())
                         game_data[category] = value
 
+                orders = soup.find_all('a', class_='tc-item')
+                # Loop through each order and extract the required information
+                for order in orders:
+                    # Extract the user ID and user name
+                    user_info = order.find('div', class_='media-user-name')
+                    user_id = int(order.find('div', class_='avatar-photo')['data-href'].split('/')[-2])
+                    user_name = user_info.text.strip() if user_info else 'N/A'
+
+                    # Extract the description
+                    description_div = order.find('div', class_='tc-desc-text')
+                    description = description_div.text.strip() if description_div else 'No description available'
+
+                    # Extract the price
+                    price = order.find('div', class_='tc-price').text.strip()
+    
+                    # Extract the link
+                    link = order['href']
+
+                    print(f"User ID: {user_id}")
+                    print(f"User Name: {user_name}")
+                    print(f"Description: {description}")
+                    print(f"Price: {price}")
+                    print(f"Link: {link}")
+
                 return game_data
 
             except requests.HTTPError as http_err:
